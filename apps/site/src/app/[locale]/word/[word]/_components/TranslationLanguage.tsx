@@ -1,8 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useSyncExternalStore } from 'react';
 
-import { flagOf } from '@/core/languageFlags';
+import { Flag } from '@/components/Flag';
 
 import styles from '../../word.module.scss';
 
@@ -18,21 +18,43 @@ const Context = createContext<ContextT>({ selected: null, available: [], select:
 
 const STORAGE_KEY = 'vbh.site.translation-language';
 
+// The choice is one for the page, and a page has a picker per dataset (issue
+// #538): every picker reads it from here and hears when another one sets it
+const listeners = new Set<() => void>();
+// a private window or blocked storage: the choice lives until the page unloads
+let unsaved: string | null = null;
+
 const readChoice = (): string | null => {
   try {
-    return window.localStorage.getItem(STORAGE_KEY);
+    return window.localStorage.getItem(STORAGE_KEY) ?? unsaved;
   } catch {
-    return null;
+    return unsaved;
   }
 };
 
 const keepChoice = (language: string): void => {
+  unsaved = language;
   try {
     window.localStorage.setItem(STORAGE_KEY, language);
   } catch {
-    // a private window or blocked storage: the choice lives until the page unloads
+    // kept in `unsaved`
   }
+  listeners.forEach((listener) => listener());
 };
+
+const subscribe = (listener: () => void): (() => void) => {
+  listeners.add(listener);
+  // the choice made on a page in another tab of the browser
+  window.addEventListener('storage', listener);
+
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener('storage', listener);
+  };
+};
+
+// the server knows no choice: it renders the default, the browser takes over after hydration
+const noChoice = (): null => null;
 
 type ProviderP = {
   /** The languages this headword translates into, in the order of the picker */
@@ -43,19 +65,10 @@ type ProviderP = {
 };
 
 export const TranslationLanguageProvider = ({ available, defaultLanguage, children }: ProviderP) => {
-  const [selected, setSelected] = useState(defaultLanguage);
+  const choice = useSyncExternalStore(subscribe, readChoice, noChoice);
+  const selected = choice && available.includes(choice) ? choice : defaultLanguage;
 
-  useEffect(() => {
-    const kept = readChoice();
-    if (kept && available.includes(kept)) setSelected(kept);
-  }, [available]);
-
-  const select = (language: string) => {
-    setSelected(language);
-    keepChoice(language);
-  };
-
-  return <Context.Provider value={{ selected, available, select }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ selected, available, select: keepChoice }}>{children}</Context.Provider>;
 };
 
 /** The flags of the languages a headword has; the chosen one pressed */
@@ -74,7 +87,7 @@ export const TranslationPicker = ({ label }: { label: string }) => {
           title={language}
           onClick={() => select(language)}
         >
-          <span aria-hidden="true">{flagOf(language)}</span>
+          <Flag language={language} decorative />
           <span className={styles.flagCode}>{language}</span>
         </button>
       ))}

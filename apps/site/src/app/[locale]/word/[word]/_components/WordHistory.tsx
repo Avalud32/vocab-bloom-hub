@@ -1,18 +1,18 @@
 import React from 'react';
-import type { getTranslations } from 'next-intl/server';
 import type { PublicChangeV1T } from 'server/types';
 
-import { flagOf } from '@/core/languageFlags';
+import { Flag } from '@/components/Flag';
 import { changedFields, isNamedField, recordLanguage, recordName } from '@/core/wordHistory';
 import { Link } from '@/i18n/navigation';
 
 import styles from '../../word.module.scss';
+import type { TranslateT } from './translate';
 
 type WordHistoryP = {
   locale: string;
   /** The edits of one entry: the headword read in one part of speech */
   changes: PublicChangeV1T[];
-  t: Awaited<ReturnType<typeof getTranslations>>;
+  t: TranslateT;
 };
 
 // an exclamation mark in a circle: the block is a notice, not a part of the entry
@@ -69,9 +69,9 @@ export const WordHistory = ({ locale, changes, t }: WordHistoryP) => {
                 {name && (
                   <span className={styles.historyRecord}>
                     {language && (
-                      <span role="img" aria-label={language} title={language}>
-                        {flagOf(language)}{' '}
-                      </span>
+                      <>
+                        <Flag language={language} />{' '}
+                      </>
                     )}
                     {name}
                   </span>

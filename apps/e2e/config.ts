@@ -16,6 +16,10 @@ export const SITE_PORT = 3021;
 export const SITE_API_PORT = 3012;
 export const SITE_URL = `http://localhost:${SITE_PORT}`;
 export const SITE_API_URL = `http://localhost:${SITE_API_PORT}/api`;
+// What the site itself asks: the same API as an instance with two datasets
+// (helpers/site-datasets-stub.mjs, issue #538)
+export const SITE_STUB_PORT = 3013;
+export const SITE_STUB_URL = `http://localhost:${SITE_STUB_PORT}/api`;
 
 // Holds the isolated sqlite database (wiped by the server webServer command
 // before it boots) and the saved browser session (overwritten by auth.setup.ts)

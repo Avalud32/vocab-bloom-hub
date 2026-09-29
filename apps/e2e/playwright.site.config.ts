@@ -7,6 +7,8 @@ import {
   SITE_API_URL,
   SITE_DB_PATH,
   SITE_PORT,
+  SITE_STUB_PORT,
+  SITE_STUB_URL,
   SITE_URL,
 } from './config';
 
@@ -62,6 +64,15 @@ export default defineConfig({
       },
     },
     {
+      // The API as the site sees it: every request passed on, a second
+      // dataset added to a few headwords (issue #538) — SQLite holds one
+      // dataset and the tabs of a word page need two
+      command: `node helpers/site-datasets-stub.mjs ${SITE_STUB_PORT} ${SITE_API_URL}`,
+      url: `${SITE_STUB_URL}/health`,
+      reuseExistingServer: false,
+      timeout: 180_000,
+    },
+    {
       // Serves the build produced by `yarn e2e:site:build` (repo root), which
       // bakes the relative /api base into the client bundle; API_INTERNAL_URL
       // is read at runtime for SSR and the /api/* forwarding. Bypasses the
@@ -72,7 +83,7 @@ export default defineConfig({
       timeout: 60_000,
       env: {
         PORT: String(SITE_PORT),
-        API_INTERNAL_URL: SITE_API_URL,
+        API_INTERNAL_URL: SITE_STUB_URL,
         NODE_ENV: 'production',
       },
     },

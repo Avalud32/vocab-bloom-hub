@@ -60,3 +60,44 @@ export const translationLanguages = (entries: readonly PublicWordV1T[], locale: 
     locale,
   ).map((item) => item.language);
 };
+
+// the text of a title or a definition as it is compared: the case and the cut-off mark of a title set aside
+const comparable = (text: string): string =>
+  text
+    .trim()
+    .replace(/(\.{3}|…)$/, '')
+    .trim()
+    .toLowerCase();
+
+/**
+ * The title of a meaning, when it says what the definition does not (issue
+ * #538). A dataset of a public source has no titles of its own: its
+ * converter titles a meaning with the start of its definition, and the page
+ * said everything twice
+ */
+export const meaningTitle = (meaning: { title?: string | null; definition: string }): string | null => {
+  const title = meaning.title?.trim();
+  if (!title) return null;
+  return comparable(meaning.definition).includes(comparable(title)) ? null : title;
+};
+
+/** The description of an entry, unless it is the definition of one of its meanings word for word */
+export const entryDescription = (
+  entry: Pick<PublicWordV1T, 'description'> & { meanings: ReadonlyArray<{ definition: string }> },
+): string | null => {
+  const description = entry.description?.trim();
+  if (!description) return null;
+  return entry.meanings.some((meaning) => comparable(meaning.definition) === comparable(description))
+    ? null
+    : description;
+};
+
+/** How many meanings an entry shows before the rest is folded, and from how many on it folds any */
+export const MEANINGS_SHOWN = 6;
+export const MEANINGS_FOLDED_FROM = 9;
+
+/** The meanings of an entry in the open and the folded ones: "get" is forty meanings, a reader came for the first */
+export const foldedMeanings = <T>(meanings: readonly T[]): { shown: T[]; folded: T[] } =>
+  meanings.length < MEANINGS_FOLDED_FROM
+    ? { shown: [...meanings], folded: [] }
+    : { shown: meanings.slice(0, MEANINGS_SHOWN), folded: meanings.slice(MEANINGS_SHOWN) };

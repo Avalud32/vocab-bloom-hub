@@ -208,9 +208,12 @@ export default {
     synonyms: 'Synonyms',
     antonyms: 'Antonyms',
     phrasal_variants: 'Phrasal variants',
-    from_api: 'This page is',
+    // the tabs of a word page, a dataset of the instance each (issue #538)
+    datasets_label: 'Datasets',
+    // an entry as a card (issue #538): the label of its forms, the fold of a long list of meanings
+    forms: 'Forms',
+    more_meanings: 'More meanings ({count})',
     try_in_playground: 'try it in the playground',
-    license_note: 'data under {license}',
     ai_note: 'AI-generated, may contain errors',
     modified_note: 'changed or added by the owner of this site',
     history_title: 'What was changed on this site',

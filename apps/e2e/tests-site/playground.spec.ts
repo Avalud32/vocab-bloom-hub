@@ -37,10 +37,12 @@ test.describe('playground', () => {
     await page.locator('#field-word').fill('run');
     await send.click();
     await expect(page.locator('strong').filter({ hasText: '200' })).toBeVisible();
-    // one group for the one dataset of the fixture, under its terms
+    // a group per dataset, under its terms: the one of the fixture and the one the stub of
+    // the suite adds to "run" (helpers/site-datasets-stub.mjs, issue #538)
     await expect(page.locator('pre').filter({ hasText: '"dataset": "default"' })).toBeVisible();
     await expect(page.locator('pre').filter({ hasText: '"license": "CC-BY-4.0"' })).toBeVisible();
-    await expect(page.locator('pre').filter({ hasText: '"found": 1' })).toBeVisible();
+    await expect(page.locator('pre').filter({ hasText: '"dataset": "wordnet"' })).toBeVisible();
+    await expect(page.locator('pre').filter({ hasText: '"found": 2' })).toBeVisible();
 
     await page.goto('/en/playground?endpoint=get-words-word-datasets-dataset-history');
     await expect(page.getByRole('heading', { level: 2 })).toContainText(

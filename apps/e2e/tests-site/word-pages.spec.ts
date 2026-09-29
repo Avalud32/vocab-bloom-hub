@@ -13,12 +13,31 @@ test.describe('word pages', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'verb' })).toBeVisible();
     await expect(page.getByText('to move fast').first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'sprint' })).toHaveAttribute('href', /\/en\/word\/sprint$/);
-    // the page names the API call it renders
-    await expect(page.getByText('GET /api/v1/words/run')).toBeVisible();
+    // where the data comes from is a note over the entries (issue #538): the source,
+    // the license, and the API call the page renders
+    const note = page.getByRole('complementary', { name: 'Terms of the dictionary data' });
+    await expect(note).toContainText('Source');
+    await expect(note).toContainText('Vocab Bloom Hub English dataset');
+    await expect(note.getByRole('link', { name: 'CC BY 4.0' })).toHaveAttribute(
+      'href',
+      '/en/docs/data-license',
+    );
+    await expect(note.getByRole('link', { name: 'AI-generated, may contain errors' })).toHaveAttribute(
+      'href',
+      '/en/docs/data',
+    );
+    await expect(note.getByText('GET /api/v1/words/run', { exact: true })).toBeVisible();
+    const noteBox = await note.boundingBox();
+    const entryBox = await page.locator('section').first().boundingBox();
+    expect(noteBox!.y + noteBox!.height).toBeLessThanOrEqual(entryBox!.y);
     // one translation language at a time (issue #520): the fixture has Russian only, so it
     // shows by default, flagged, and there is nothing to pick from
     await expect(page.getByText('бежать').first()).toBeVisible();
-    await expect(page.getByRole('img', { name: 'ru' }).first()).toBeVisible();
+    const flag = page.getByRole('img', { name: 'ru' }).first();
+    await expect(flag).toBeVisible();
+    // a picture the site serves, not an emoji: Windows has no glyphs for the flags (issue #538)
+    await expect(flag).toHaveAttribute('src', '/flags/ru.svg');
+    expect(await flag.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
     await expect(page.getByRole('group', { name: 'Language' })).toHaveCount(0);
   });
 
@@ -182,6 +201,93 @@ test.describe('word pages', () => {
     await page.goto('/en/word/run');
     await expect(page).toHaveTitle('run — meanings, forms, translations · Vocab Bloom Hub');
     await expect(page.getByText('Translation:')).toHaveCount(0);
+  });
+
+  // issue #538: the suite's API holds one dataset, helpers/site-datasets-stub.mjs adds
+  // a second one to "run" and makes "footrace" a word of that second dataset alone
+  test('a headword one dataset holds has no tabs', async ({ page }) => {
+    await page.goto('/en/word/abandon');
+
+    await expect(page.getByRole('heading', { level: 2, name: 'verb' })).toBeVisible();
+    await expect(page.getByTestId('dataset-tabs')).toHaveCount(0);
+  });
+
+  test('a headword of two datasets has a tab for each, the one of the project open', async ({ page }) => {
+    await page.goto('/en/word/run');
+
+    const tabs = page.getByRole('tablist', { name: 'Datasets' }).getByRole('tab');
+    await expect(tabs).toHaveText(['Vocab Bloom Hub English dataset', 'Open English WordNet']);
+    await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
+    const served = page.getByText('definition of to move fast');
+    const second = page.getByText('definition of a race run on foot');
+    await expect(served).toBeVisible();
+    // the page holds the dataset of its first tab and no other
+    await expect(second).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Report a mistake' })).toBeVisible();
+
+    // the dataset of another tab is read by the browser when the tab is pressed
+    const read = page.waitForResponse((response) => response.url().endsWith('/api/v1/words/run/datasets'));
+    await tabs.nth(1).click();
+    expect((await read).status()).toBe(200);
+    await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+    await expect(second).toBeVisible();
+    await expect(served).toBeHidden();
+    // the choice is no part of the URL
+    await expect(page).toHaveURL(/\/en\/word\/run$/);
+    const panel = page.getByRole('tabpanel', { name: 'Open English WordNet' });
+    await expect(panel.getByRole('heading', { level: 2 })).toHaveText(['noun']);
+    // the pronunciation next to the headword is the one of the open dataset
+    await expect(page.getByText('/second/').first()).toBeVisible();
+    await expect(page.getByText('/rʌn/').first()).toBeHidden();
+    // the terms are the dataset's own, and its read is named
+    const terms = panel.getByTestId('dataset-terms');
+    await expect(terms).toContainText('Open English WordNet');
+    await expect(terms).toContainText('GET /api/v1/words/run/datasets');
+    await expect(terms.getByRole('link', { name: 'CC BY 4.0' })).toHaveAttribute(
+      'href',
+      'https://creativecommons.org/licenses/by/4.0/',
+    );
+    await expect(terms.getByRole('link', { name: 'Open English WordNet' })).toHaveAttribute(
+      'href',
+      'https://en-word.net',
+    );
+    await expect(terms.getByText('The notice of the second dataset, in full.')).toBeAttached();
+    // a report goes to the queue of the served dataset
+    await expect(page.getByRole('button', { name: 'Report a mistake' })).toBeHidden();
+    await expect(panel.getByRole('link', { name: 'footrace' })).toHaveAttribute('href', '/en/word/footrace');
+
+    // the keys of a tab list; what the server rendered was kept, nothing is read again
+    await tabs.nth(1).press('ArrowLeft');
+    await expect(tabs.nth(0)).toBeFocused();
+    await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
+    await expect(served).toBeVisible();
+    await expect(page.getByText('/rʌn/').first()).toBeVisible();
+  });
+
+  test('the page that is sent is the first tab, rendered by the server and cacheable', async ({ request }) => {
+    const response = await request.get('/en/word/run');
+
+    expect(response.status()).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('definition of to move fast');
+    expect(html).toContain('Open English WordNet');
+    // the dataset of the other tab is named, not sent
+    expect(html).not.toContain('definition of a race run on foot');
+    expect(response.headers()['cache-control']).toBe('s-maxage=3600, stale-while-revalidate=86400');
+    // a dataset is no part of the URL: a query changes nothing
+    const asked = await request.get('/en/word/run?dataset=wordnet');
+    expect(await asked.text()).not.toContain('definition of a race run on foot');
+  });
+
+  test('a headword only another dataset holds is a page, kept out of the search index', async ({ page }) => {
+    const response = await page.goto('/en/word/footrace');
+
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('footrace');
+    await expect(page.getByText('definition of a race between people who run')).toBeVisible();
+    await expect(page.getByTestId('dataset-tabs')).toHaveCount(0);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
+    await expect(page.getByRole('button', { name: 'Report a mistake' })).toHaveCount(0);
   });
 
   test('the word index offers the search and the examples', async ({ page }) => {
