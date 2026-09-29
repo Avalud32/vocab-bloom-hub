@@ -212,9 +212,20 @@ merged: an entry stays in the group of its dataset, under the license of its sou
   for its reads; count them against the connection limit of a managed Postgres.
 - **No statement names two schemas**: each group is a read of one dataset, the ones the active
   dataset is answered with.
-- **The search, the list and the word pages of the website stay on the active dataset.** So do
-  the reports of the readers: a report is filed in the active dataset, and the ids of an entry
-  of another group mean nothing there.
+- **The search and the list stay on the active dataset.** So do the reports of the readers: a
+  report is filed in the active dataset, and the ids of an entry of another group mean nothing
+  there.
+- **A word page of the website has a tab per dataset.** The page of a headword shows this read
+  as tabs, one for every dataset that holds the word — the dataset of the project first,
+  Wiktionary second, the others in the order of the instance; a headword one dataset holds has
+  no tabs. A tab is a dataset on its own: the terms it comes under, its spelling, its entries
+  and the history of its edits. The page that is sent holds the first tab only, whichever
+  dataset is the active one: that is what the server renders, what is cached and what a search
+  engine reads. The dataset of another tab is read by the browser from this route when the tab
+  is pressed; the choice is no part of the URL. The sitemap and the index of words are the
+  headwords of the active dataset, and a headword the active dataset does not hold is a page
+  that is kept out of the search index. "Report a mistake" is offered on the tab of the active
+  dataset only.
 - **An installed dataset is public.** Before this read existed a dataset was seen by nobody
   until it was activated; now its entries, the history of its edits and the names credited in
   it are read from the moment it is installed — half imported, if the import is still running.

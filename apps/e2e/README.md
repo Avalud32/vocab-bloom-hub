@@ -49,6 +49,11 @@ First run on a new machine: `yarn workspace e2e exec playwright install chromium
 API on port 3012 (`.tmp/site-e2e.sqlite`, public rate limit lifted for the crawler) and the
 production build of `apps/site` on port 3021 with `API_INTERNAL_URL` pointing at it — the same
 wiring docker compose uses, so the browser calls the relative `/api` and the site forwards it.
+Between the two stands `helpers/site-datasets-stub.mjs` (port 3013, issue #538): SQLite holds one
+dataset and the tabs of a word page need two, so the stub passes every request on and adds the
+group of a second dataset to the read of every dataset of a few headwords (`run`, and
+`footrace`, which that second dataset alone holds) — for the render of the site, which names
+the tabs, and for the browser, which reads the dataset of a tab that is pressed.
 The `seed` project (`tests-site/site.setup.ts`) posts the fixture words
 (`helpers/site-fixture.ts`, mirroring `apps/server/test/harness/public-api-fixture.ts`) through
 the admin API with a derived Bearer token — the site has no login UI to reuse. The specs cover

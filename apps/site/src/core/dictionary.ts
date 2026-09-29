@@ -5,6 +5,8 @@ import type {
   PublicHeadwordHistoryV1ResT,
   PublicHeadwordV1ResT,
   PublicMetaV1ResT,
+  PublicWordDatasetV1T,
+  PublicWordDatasetsV1ResT,
   PublicWordV1ResT,
 } from 'server/types';
 
@@ -64,6 +66,45 @@ export const fetchHeadwordHistory = async (word: string): Promise<PublicChangeV1
         headers: internalApiHeaders(),
         next: { revalidate: REVALIDATE_SECONDS },
       }),
+    );
+    if (!res.ok) return [];
+
+    return ((await res.json()) as PublicHeadwordHistoryV1ResT).data;
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * GET /api/v1/words/{word}/datasets: the headword as every dataset of the
+ * instance has it, a group per dataset (issue #538). The page stands without
+ * it: no answer — no dataset holds the word, the read failed, a server that
+ * has no such route — is no group, and the page shows the served dataset.
+ */
+export const fetchHeadwordDatasets = async (word: string): Promise<PublicWordDatasetV1T[]> => {
+  try {
+    const res = await getWithOneRetry(() =>
+      fetch(`${serverApiBase()}/v1/words/${encodeURIComponent(word)}/datasets`, {
+        headers: internalApiHeaders(),
+        next: { revalidate: REVALIDATE_SECONDS },
+      }),
+    );
+    if (!res.ok) return [];
+
+    return ((await res.json()) as PublicWordDatasetsV1ResT).data;
+  } catch {
+    return [];
+  }
+};
+
+/** GET /api/v1/words/{word}/datasets/{dataset}/history: the history read of a dataset that is not the served one */
+export const fetchDatasetHistory = async (word: string, dataset: string): Promise<PublicChangeV1T[]> => {
+  try {
+    const res = await getWithOneRetry(() =>
+      fetch(
+        `${serverApiBase()}/v1/words/${encodeURIComponent(word)}/datasets/${encodeURIComponent(dataset)}/history`,
+        { headers: internalApiHeaders(), next: { revalidate: REVALIDATE_SECONDS } },
+      ),
     );
     if (!res.ok) return [];
 

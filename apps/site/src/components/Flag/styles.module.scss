@@ -1,0 +1,16 @@
+// sized by the text it stands in, 3:2
+.flag,
+.globe {
+  display: inline-block;
+  flex: none;
+  width: 1.3em;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  vertical-align: -0.12em;
+}
+
+// the outline tells a white stripe from a white page
+.flag {
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--border);
+}
